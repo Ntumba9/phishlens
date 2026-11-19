@@ -27,6 +27,17 @@ def analyze(raw: bytes) -> Report:
         findings.extend(check(parsed))
     findings.extend(attachments_check.check(parsed))
 
+    # The same signal can fire on several copies of one link (HTML part,
+    # text part); show each distinct piece of evidence once.
+    seen: set[tuple[str, str]] = set()
+    unique = []
+    for finding in findings:
+        key = (finding.code, finding.detail)
+        if key not in seen:
+            seen.add(key)
+            unique.append(finding)
+    findings = unique
+
     # High severity first, then medium, low, info.
     order = {"high": 0, "medium": 1, "low": 2, "info": 3}
     findings.sort(key=lambda f: order.get(f.severity, 4))
