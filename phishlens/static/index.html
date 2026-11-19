@@ -4,152 +4,183 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PhishLens</title>
-<style>
-  :root { color-scheme: dark; }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; padding: 2rem;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    background: #0d1117; color: #e6edf3;
-    display: flex; justify-content: center;
-  }
-  main { width: 100%; max-width: 860px; }
-  h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
-  .sub { color: #8b949e; font-size: .85rem; margin-bottom: 1.5rem; }
-  textarea {
-    width: 100%; min-height: 220px; resize: vertical;
-    background: #161b22; color: #e6edf3;
-    border: 1px solid #30363d; border-radius: 6px;
-    padding: .75rem; font: inherit; font-size: .8rem;
-  }
-  .row { display: flex; gap: .75rem; align-items: center; margin: .75rem 0 1.5rem; flex-wrap: wrap; }
-  input[type=file] { color: #8b949e; font-size: .8rem; }
-  button {
-    background: #238636; color: #fff; border: 0; border-radius: 6px;
-    padding: .55rem 1.1rem; font: inherit; cursor: pointer;
-  }
-  button:disabled { opacity: .5; cursor: wait; }
-  #result { display: none; }
-  .verdict {
-    display: inline-block; padding: .35rem .8rem; border-radius: 999px;
-    font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
-    font-size: .8rem;
-  }
-  .likely_phish { background: #da3633; color: #fff; }
-  .suspicious { background: #9e6a03; color: #fff; }
-  .no_strong_signals { background: #1f6feb; color: #fff; }
-  .meta { color: #8b949e; font-size: .8rem; margin: .5rem 0 1rem; }
-  table { width: 100%; border-collapse: collapse; font-size: .82rem; }
-  th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid #21262d; vertical-align: top; }
-  th { color: #8b949e; font-weight: 600; }
-  .sev { font-weight: 700; text-transform: uppercase; font-size: .72rem; }
-  .sev.high { color: #f85149; }
-  .sev.medium { color: #d29922; }
-  .sev.low { color: #58a6ff; }
-  .sev.info { color: #8b949e; }
-  .notes { color: #8b949e; font-size: .78rem; margin-top: 1.25rem; border-top: 1px solid #21262d; padding-top: .75rem; }
-  code { background: #161b22; padding: .1rem .3rem; border-radius: 4px; word-break: break-all; }
-  h2 { font-size: .95rem; margin: 1.5rem 0 .5rem; }
-  #error { color: #f85149; font-size: .85rem; margin-top: .75rem; display: none; }
-  @media (max-width: 640px) {
-    body { padding: 1rem; }
-    table, tbody, tr { display: block; width: 100%; }
-    thead { display: none; }
-    tr { border-bottom: 1px solid #21262d; padding: .5rem 0; }
-    td { display: block; border: 0; padding: .15rem 0; }
-    td code { word-break: break-all; }
-  }
-</style>
+<link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-<main>
-  <h1>PhishLens</h1>
-  <p class="sub">Upload a suspicious email or paste its raw source. Get an evidence report for a human to review. Links are never opened.</p>
 
-  <textarea id="raw" placeholder="Paste raw email source here (headers + body), or choose an .eml file below."></textarea>
-  <div class="row">
-    <input type="file" id="file" accept=".eml,.txt,message/rfc822">
-    <button id="go">Analyze</button>
+<div class="app">
+
+  <aside class="nav" aria-label="Cases">
+    <div class="nav-brand">
+      <svg class="brand-mark" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/>
+        <line x1="16.5" y1="16.5" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M8 11.2l2 2 4-4.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="brand-name">PhishLens</span>
+    </div>
+
+    <button id="new-analysis-btn" class="btn primary nav-new">New analysis</button>
+
+    <div class="nav-controls">
+      <input type="search" id="queue-search" placeholder="Search cases" aria-label="Search cases">
+      <select id="queue-filter" aria-label="Filter by verdict">
+        <option value="">All verdicts</option>
+        <option value="likely_phish">Likely phish</option>
+        <option value="suspicious">Suspicious</option>
+        <option value="no_strong_signals">No strong signals</option>
+      </select>
+    </div>
+
+    <div id="queue-list" class="queue-list" role="list" aria-label="Case queue"></div>
+
+    <p class="nav-foot">Runs locally. Messages and analysis stay on this machine.</p>
+  </aside>
+
+  <main class="canvas" id="detail-panel">
+
+    <div class="case-nav hidden" id="case-nav">
+      <button id="back-to-cases" class="btn quiet">
+        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+          <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Cases
+      </button>
+    </div>
+
+    <div class="canvas-inner">
+
+      <section id="empty-state" class="empty-state">
+        <div class="empty-glyph" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="30" height="30">
+            <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="16.5" y1="16.5" x2="21" y2="21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M8 11.2l2 2 4-4.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h1>Triage a suspicious email</h1>
+        <p>Upload .eml files or paste raw source. Every analysis becomes a case
+        with its evidence, indicators and your verdict. Links are never opened.</p>
+        <button class="btn primary large" id="empty-cta">Analyze an email</button>
+      </section>
+
+      <section id="loading-state" class="hidden" aria-busy="true">
+        <div class="skeleton hero-skeleton"></div>
+        <div class="skeleton line-skeleton"></div>
+        <div class="skeleton line-skeleton short"></div>
+        <div class="skeleton block-skeleton"></div>
+        <div class="skeleton block-skeleton"></div>
+      </section>
+
+      <article id="case-view" class="hidden">
+
+        <header class="case-header">
+          <div class="verdict-line">
+            <h1 id="verdict-word" class="verdict-word"></h1>
+            <span id="score-pill" class="score-pill" title="Heuristic score, not a calibrated probability"></span>
+          </div>
+          <p class="signal-summary" id="signal-summary"></p>
+          <p class="heuristic-note">Heuristic score from documented rules. It is not a calibrated
+          probability, and a low score is not proof of safety.</p>
+
+          <h2 id="case-subject" class="case-subject"></h2>
+          <p class="case-meta" id="case-meta"></p>
+
+          <details class="case-details" id="case-details">
+            <summary>Case details</summary>
+            <dl id="case-details-body" class="case-details-body"></dl>
+          </details>
+        </header>
+
+        <div class="tabs-wrap">
+          <nav class="segmented" id="tabs" role="tablist" aria-label="Evidence views">
+            <button class="segment active" data-tab="findings" role="tab" aria-selected="true">Findings</button>
+            <button class="segment" data-tab="links" role="tab" aria-selected="false">Links</button>
+            <button class="segment" data-tab="attachments" role="tab" aria-selected="false">Attachments</button>
+            <button class="segment" data-tab="route" role="tab" aria-selected="false">Route</button>
+            <button class="segment" data-tab="indicators" role="tab" aria-selected="false">Indicators</button>
+            <button class="segment" data-tab="notes" role="tab" aria-selected="false">Notes</button>
+          </nav>
+        </div>
+
+        <div class="tab-panels">
+          <section id="tab-findings" class="tab-panel" role="tabpanel" tabindex="0"></section>
+          <section id="tab-links" class="tab-panel hidden" role="tabpanel" tabindex="0"></section>
+          <section id="tab-attachments" class="tab-panel hidden" role="tabpanel" tabindex="0"></section>
+          <section id="tab-route" class="tab-panel hidden" role="tabpanel" tabindex="0"></section>
+          <section id="tab-indicators" class="tab-panel hidden" role="tabpanel" tabindex="0">
+            <div class="ioc-toolbar">
+              <p class="table-hint">Extracted from the message. Never opened, resolved or fetched.</p>
+              <label class="switch">
+                <input type="checkbox" id="defang-toggle" checked>
+                <span class="switch-track" aria-hidden="true"></span>
+                <span class="switch-label">Defanged</span>
+              </label>
+            </div>
+            <div id="ioc-body" class="ioc-body"></div>
+          </section>
+          <section id="tab-notes" class="tab-panel hidden" role="tabpanel" tabindex="0">
+            <div id="notes-list"></div>
+            <div class="note-row">
+              <input type="text" id="note-body" placeholder="Add an analyst note" aria-label="Add an analyst note">
+              <button id="add-note" class="btn">Add</button>
+            </div>
+          </section>
+        </div>
+
+        <p class="safety-note" id="safety-notes"></p>
+
+        <section class="card analyst-card" aria-labelledby="analyst-heading">
+          <h3 id="analyst-heading">Your assessment</h3>
+          <p class="hint">Recorded after reviewing the evidence above. Stored with the case.</p>
+          <div class="analyst-row">
+            <label for="analyst-verdict">Verdict</label>
+            <select id="analyst-verdict">
+              <option value="">Not decided</option>
+              <option value="likely_phish">Likely phish</option>
+              <option value="suspicious">Suspicious</option>
+              <option value="no_strong_signals">No strong signals</option>
+            </select>
+            <input type="text" id="analyst-reason" placeholder="Reason, recorded with the verdict">
+            <button id="save-verdict" class="btn primary">Save</button>
+          </div>
+          <div class="export-row">
+            <a id="export-html" class="btn ghost" href="#" target="_blank" rel="noopener">Report (HTML)</a>
+            <a id="export-json" class="btn ghost" href="#" target="_blank" rel="noopener">Evidence (JSON)</a>
+            <a id="export-iocs" class="btn ghost" href="#" target="_blank" rel="noopener">IOCs (defanged)</a>
+          </div>
+        </section>
+
+      </article>
+    </div>
+  </main>
+</div>
+
+<div id="sheet-overlay" class="sheet-overlay hidden">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <h2 id="sheet-title">New analysis</h2>
+    <p class="hint">Drop .eml files, browse, or paste raw message source.
+    Nothing is fetched, resolved or opened.</p>
+    <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Drop .eml files here, or press Enter to browse">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <path d="M12 3v12m0-12l-4 4m4-4l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M4 15v4a2 2 0 002 2h12a2 2 0 002-2v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+      <span>Drop .eml files here or <button type="button" class="linklike" id="browse-btn">browse</button></span>
+      <span id="chosen-files" class="chosen-files"></span>
+      <input type="file" id="files" accept=".eml,.txt,message/rfc822" multiple hidden>
+    </div>
+    <textarea id="raw" rows="8" placeholder="Or paste raw email source (headers + body)." aria-label="Raw email source"></textarea>
+    <div id="error" class="error hidden" role="alert"></div>
+    <div class="sheet-actions">
+      <button id="cancel-sheet" class="btn">Cancel</button>
+      <button id="go" class="btn primary">Analyze</button>
+    </div>
   </div>
-  <div id="error"></div>
+</div>
 
-  <section id="result">
-    <span class="verdict" id="verdict"></span>
-    <div class="meta" id="meta"></div>
-    <h2>Evidence</h2>
-    <table>
-      <thead><tr><th>Severity</th><th>Finding</th><th>Detail</th></tr></thead>
-      <tbody id="findings"></tbody>
-    </table>
-    <h2>Links found (not opened)</h2>
-    <table>
-      <thead><tr><th>URL</th><th>Shown text</th></tr></thead>
-      <tbody id="links"></tbody>
-    </table>
-    <div class="notes" id="notes"></div>
-  </section>
-</main>
-<script>
-const $ = (id) => document.getElementById(id);
+<div id="toast" class="toast hidden" role="status"></div>
 
-$("go").addEventListener("click", async () => {
-  $("error").style.display = "none";
-  $("result").style.display = "none";
-  const button = $("go");
-  button.disabled = true;
-  try {
-    const form = new FormData();
-    const file = $("file").files[0];
-    if (file) {
-      form.append("file", file);
-    } else if ($("raw").value.trim()) {
-      form.append("raw", $("raw").value);
-    } else {
-      throw new Error("Paste a message or choose a file first.");
-    }
-    const res = await fetch("/api/analyze", { method: "POST", body: form });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.detail || ("Request failed: " + res.status));
-    }
-    render(await res.json());
-  } catch (err) {
-    $("error").textContent = err.message;
-    $("error").style.display = "block";
-  } finally {
-    button.disabled = false;
-  }
-});
-
-function esc(text) {
-  const span = document.createElement("span");
-  span.textContent = text == null ? "" : String(text);
-  return span.innerHTML;
-}
-
-function render(report) {
-  const v = $("verdict");
-  v.textContent = report.verdict.replace(/_/g, " ");
-  v.className = "verdict " + report.verdict;
-  $("meta").innerHTML =
-    "Score " + esc(report.score) + "/100" +
-    (report.subject ? " &middot; Subject: " + esc(report.subject) : "") +
-    (report.from ? " &middot; From: " + esc(report.from) : "");
-
-  $("findings").innerHTML = report.findings.map((f) =>
-    "<tr><td class='sev " + esc(f.severity) + "'>" + esc(f.severity) +
-    "</td><td>" + esc(f.title) +
-    "</td><td>" + esc(f.detail) + "</td></tr>"
-  ).join("") || "<tr><td colspan=3>No findings.</td></tr>";
-
-  $("links").innerHTML = report.links.map((l) =>
-    "<tr><td><code>" + esc(l.url) + "</code></td><td>" +
-    esc(l.anchor_text || "") + "</td></tr>"
-  ).join("") || "<tr><td colspan=2>No links found.</td></tr>";
-
-  $("notes").innerHTML = report.notes.map(esc).join("<br>");
-  $("result").style.display = "block";
-}
-</script>
+<script src="/static/app.js"></script>
 </body>
 </html>
