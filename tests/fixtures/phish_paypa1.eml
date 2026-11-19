@@ -1,0 +1,36 @@
+Return-Path: <bounce@secure-paypa1.top>
+From: "PayPal Security" <no-reply@secure-paypa1.top>
+Reply-To: <verifications@account-review.click>
+Subject: Urgent: your account has been suspended
+Date: Wed, 18 Nov 2026 09:12:00 +0200
+Message-ID: <f3k2j4@secure-paypa1.top>
+Authentication-Results: mx.example.com; spf=fail smtp.mailfrom=secure-paypa1.top; dkim=fail; dmarc=fail
+Received: from mail.secure-paypa1.top (mail.secure-paypa1.top [203.0.113.44]) by mx.example.com with ESMTP id abc123
+Content-Type: multipart/alternative; boundary="BOUNDARY42"
+
+--BOUNDARY42
+Content-Type: text/plain; charset="utf-8"
+
+Dear customer,
+
+We detected unusual activity on your account. Your account has been suspended.
+
+Verify your account within 24 hours or it will be closed permanently.
+Log in to verify: https://paypal.com.account-verify.top/login
+
+Enter your password and confirm your card to restore access.
+
+PayPal Security Team
+
+--BOUNDARY42
+Content-Type: text/html; charset="utf-8"
+
+<html><body>
+<p>Dear customer,</p>
+<p>We detected <b>unusual activity</b> on your account. Your account has been suspended.</p>
+<p>Verify your account within 24 hours or it will be closed permanently.</p>
+<p><a href="https://paypal.com.account-verify.top/login">https://www.paypal.com/security</a></p>
+<p>Enter your password and confirm your card to restore access.</p>
+</body></html>
+
+--BOUNDARY42--
