@@ -71,9 +71,20 @@ documents itself.
 - **Analyst verdict** - overrule the heuristic with your own call and a
   reason; both are recorded in the case's note trail.
 - **Notes** - a free-text trail of what you checked.
+- **Case status and aging** - every case moves through New, In review and
+  Closed, and the queue shows each case's status and age, so nothing sits
+  unreviewed without being visible.
+- **Related cases** - the Related tab groups cases that share a sender
+  domain, link host or attachment hash, so a cluster can be reviewed
+  together. Shared infrastructure is a triage hint, not proof of a common
+  sender or campaign.
 - **Export** - a self-contained, print-ready HTML report (no scripts, no
   live links, everything escaped) and a defanged IOC list for tickets and
   block lists.
+- **Incident handoff** - one click copies a plain-text summary (verdict,
+  findings, defanged indicators, analyst call) ready to paste into a
+  ticket or chat. Nothing is sent anywhere; the handoff never leaves the
+  clipboard.
 
 ### Indicators of compromise
 
