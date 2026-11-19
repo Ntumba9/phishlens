@@ -1,0 +1,15 @@
+Return-Path: <bounce@sars-refunds.top>
+From: "SARS eFiling" <refunds@sars-refunds.top>
+Subject: Final notice: your tax refund is waiting
+Date: Tue, 17 Nov 2026 14:03:00 +0200
+Authentication-Results: mx.example.com; spf=softfail; dkim=fail; dmarc=fail
+Received: from mail.sars-refunds.top by mx.example.com with ESMTP id zz9; Tue, 17 Nov 2026 14:03:01 +0200
+Content-Type: text/plain; charset="utf-8"
+
+Dear taxpayer,
+
+Your 2026 tax refund of R4,820.00 is ready but will be cancelled within 24 hours.
+
+Confirm your banking details immediately: https://sars.gov.za.refund-portal.top/claim
+
+South African Revenue Service

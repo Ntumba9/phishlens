@@ -1,0 +1,24 @@
+From: "Accounts Department" <accounts@supp1ies-online.xyz>
+Subject: Remittance advice - statement.pdf
+Date: Wed, 18 Nov 2026 07:12:00 +0200
+Received: from mx.example.com by localhost with ESMTP id out1; Wed, 18 Nov 2026 07:05:00 +0200
+Received: from mail.supp1ies-online.xyz by mx.example.com with ESMTP id out0; Wed, 18 Nov 2026 07:10:00 +0200
+Content-Type: multipart/mixed; boundary="ATT9"
+
+--ATT9
+Content-Type: text/plain; charset="utf-8"
+
+Good morning,
+
+Please find the remittance advice attached for your records.
+
+Regards,
+Accounts
+
+--ATT9
+Content-Type: application/octet-stream
+Content-Disposition: attachment; filename="statement.pdf"
+Content-Transfer-Encoding: base64
+
+TVqQAHN5bnRoZXRpYyBmaXh0dXJlIGJ5dGVzLCBub3QgYSByZWFsIHByb2dyYW0=
+--ATT9--

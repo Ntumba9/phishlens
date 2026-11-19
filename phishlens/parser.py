@@ -1,30 +1,57 @@
 """Parse raw email source (.eml or pasted headers+body) with the stdlib.
 
 Only the standard library `email` package is used: it is battle-tested on
-hostile input and keeps the attack surface small.
+hostile input and keeps the attack surface small. Attachment payloads are
+hashed and type-sniffed inertly, bounded per part and in total; oversized
+payloads are reported as truncated rather than silently half-hashed.
 """
 
 from __future__ import annotations
 
+import hashlib
 from email import policy
 from email.parser import BytesParser
 from email.utils import getaddresses, parseaddr
 
 from .extract import extract_links
-from .models import ParsedEmail
+from .inspection import detect_type
+from .models import Attachment, ParsedEmail
+
+MAX_PART_BYTES = 5 * 1024 * 1024  # hash at most 5 MB of any single part
+MAX_TOTAL_ATTACHMENT_BYTES = 20 * 1024 * 1024  # and 20 MB across the message
 
 
-def _walk_bodies(msg) -> tuple[str, str, list[str]]:
+def _walk_bodies(msg) -> tuple[str, str, list[Attachment]]:
     text_parts: list[str] = []
     html_parts: list[str] = []
-    attachments: list[str] = []
+    attachments: list[Attachment] = []
+    total_attachment_bytes = 0
     for part in msg.walk():
         if part.is_multipart():
             continue
         ctype = part.get_content_type()
         filename = part.get_filename()
         if filename:
-            attachments.append(filename)
+            payload = part.get_payload(decode=True) or b""
+            size = len(payload)
+            budget = min(
+                MAX_PART_BYTES,
+                max(0, MAX_TOTAL_ATTACHMENT_BYTES - total_attachment_bytes),
+            )
+            data = payload[:budget]
+            truncated = size > len(data)
+            total_attachment_bytes += size
+            attachments.append(
+                Attachment(
+                    filename=filename,
+                    content_type=ctype,
+                    size=size,
+                    md5="" if truncated else hashlib.md5(data).hexdigest(),
+                    sha256="" if truncated else hashlib.sha256(data).hexdigest(),
+                    detected_type=detect_type(data),
+                    truncated=truncated,
+                )
+            )
             continue
         if ctype == "text/plain":
             payload = part.get_payload(decode=True) or b""
@@ -65,7 +92,7 @@ def parse_email(raw: bytes) -> ParsedEmail:
     text_body, html_body, attachments = _walk_bodies(msg)
     parsed.text_body = text_body
     parsed.html_body = html_body
-    parsed.attachment_names = attachments
+    parsed.attachments = attachments
     parsed.links = extract_links(text_body, html_body)
     return parsed
 
