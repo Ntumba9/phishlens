@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phishlens"
+version = "0.2.0"
+description = "Defensive phishing triage: evidence reports and a case workbench for human analysts"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "httpx>=0.27",
+    "ruff>=0.6",
+    "mypy>=1.11",
+]
+
+[project.scripts]
+phishlens = "phishlens.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["phishlens*"]
+
+[tool.setuptools.package-data]
+phishlens = ["static/*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# File()/Form() in argument defaults is the FastAPI idiom.
+"phishlens/api.py" = ["B008"]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unreachable = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
