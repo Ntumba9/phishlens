@@ -618,13 +618,39 @@ $("case-status").addEventListener("change", async () => {
   }
 });
 
+// Copy that never reports success without the clipboard actually taking the
+// text: async Clipboard API where available, execCommand fallback elsewhere,
+// and a thrown error (caught by the caller) when neither works.
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.setAttribute("readonly", "");
+  ta.style.position = "fixed";
+  ta.style.top = "0";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  let ok = false;
+  try {
+    ok = document.execCommand("copy");
+  } finally {
+    ta.remove();
+  }
+  if (!ok) throw new Error("This browser blocked clipboard access");
+}
+
 $("copy-handoff").addEventListener("click", async () => {
   if (!state.current) return;
   try {
     const resp = await fetch(`/api/cases/${state.current.id}/handoff.txt`);
     if (!resp.ok) throw new Error("Handoff unavailable");
     const text = await resp.text();
-    await navigator.clipboard.writeText(text);
+    await copyTextToClipboard(text);
     toast("Handoff copied - nothing was sent");
   } catch (err) {
     toast("Copy failed - the Report and Evidence exports still work");
