@@ -502,11 +502,13 @@ function iocItem(display, copyValue) {
   item.appendChild(el("span", null, display));
   const copy = el("button", "copy-btn", "copy");
   copy.setAttribute("aria-label", "Copy indicator");
-  copy.addEventListener("click", () => {
-    navigator.clipboard.writeText(copyValue).then(
-      () => toast("Copied"),
-      () => toast("Copy failed")
-    );
+  copy.addEventListener("click", async () => {
+    try {
+      await copyTextToClipboard(copyValue);
+      toast("Copied");
+    } catch (err) {
+      toast("Copy failed");
+    }
   });
   item.appendChild(copy);
   return item;
