@@ -47,9 +47,12 @@ class _AnchorCollector(HTMLParser):
 
 
 def extract_links(text_body: str, html_body: str) -> list[Link]:
-    """Pull every http(s) link from both bodies, deduplicated by URL+anchor."""
-    links: list[Link] = []
-    seen: set[tuple[str, str | None]] = set()
+    """Pull every http(s) link from both bodies, one row per URL.
+
+    When the same URL appears in the HTML part with anchor text and again
+    in the plain-text part, keep the HTML copy: the anchor text is evidence.
+    """
+    by_url: dict[str, Link] = {}
 
     if html_body:
         collector = _AnchorCollector()
@@ -58,15 +61,12 @@ def extract_links(text_body: str, html_body: str) -> list[Link]:
         except Exception:
             pass  # malformed HTML: fall back to what was collected so far
         for link in collector.links:
-            key = (link.url, link.anchor_text)
-            if key not in seen:
-                seen.add(key)
-                links.append(link)
+            existing = by_url.get(link.url)
+            if existing is None or (link.anchor_text and not existing.anchor_text):
+                by_url[link.url] = link
 
     for match in _URL_RE.finditer(text_body or ""):
         url = match.group(0).rstrip(".,;!")
-        key = (url, None)
-        if key not in seen:
-            seen.add(key)
-            links.append(Link(url=url, anchor_text=None, source="text"))
-    return links
+        if url not in by_url:
+            by_url[url] = Link(url=url, anchor_text=None, source="text")
+    return list(by_url.values())
