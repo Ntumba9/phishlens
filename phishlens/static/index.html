@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PhishLens</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 2rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: #0d1117; color: #e6edf3;
+    display: flex; justify-content: center;
+  }
+  main { width: 100%; max-width: 860px; }
+  h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+  .sub { color: #8b949e; font-size: .85rem; margin-bottom: 1.5rem; }
+  textarea {
+    width: 100%; min-height: 220px; resize: vertical;
+    background: #161b22; color: #e6edf3;
+    border: 1px solid #30363d; border-radius: 6px;
+    padding: .75rem; font: inherit; font-size: .8rem;
+  }
+  .row { display: flex; gap: .75rem; align-items: center; margin: .75rem 0 1.5rem; flex-wrap: wrap; }
+  input[type=file] { color: #8b949e; font-size: .8rem; }
+  button {
+    background: #238636; color: #fff; border: 0; border-radius: 6px;
+    padding: .55rem 1.1rem; font: inherit; cursor: pointer;
+  }
+  button:disabled { opacity: .5; cursor: wait; }
+  #result { display: none; }
+  .verdict {
+    display: inline-block; padding: .35rem .8rem; border-radius: 999px;
+    font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+    font-size: .8rem;
+  }
+  .likely_phish { background: #da3633; color: #fff; }
+  .suspicious { background: #9e6a03; color: #fff; }
+  .no_strong_signals { background: #1f6feb; color: #fff; }
+  .meta { color: #8b949e; font-size: .8rem; margin: .5rem 0 1rem; }
+  table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid #21262d; vertical-align: top; }
+  th { color: #8b949e; font-weight: 600; }
+  .sev { font-weight: 700; text-transform: uppercase; font-size: .72rem; }
+  .sev.high { color: #f85149; }
+  .sev.medium { color: #d29922; }
+  .sev.low { color: #58a6ff; }
+  .sev.info { color: #8b949e; }
+  .notes { color: #8b949e; font-size: .78rem; margin-top: 1.25rem; border-top: 1px solid #21262d; padding-top: .75rem; }
+  code { background: #161b22; padding: .1rem .3rem; border-radius: 4px; word-break: break-all; }
+  h2 { font-size: .95rem; margin: 1.5rem 0 .5rem; }
+  #error { color: #f85149; font-size: .85rem; margin-top: .75rem; display: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>PhishLens</h1>
+  <p class="sub">Upload a suspicious email or paste its raw source. Get an evidence report for a human to review. Links are never opened.</p>
+
+  <textarea id="raw" placeholder="Paste raw email source here (headers + body), or choose an .eml file below."></textarea>
+  <div class="row">
+    <input type="file" id="file" accept=".eml,.txt,message/rfc822">
+    <button id="go">Analyze</button>
+  </div>
+  <div id="error"></div>
+
+  <section id="result">
+    <span class="verdict" id="verdict"></span>
+    <div class="meta" id="meta"></div>
+    <h2>Evidence</h2>
+    <table>
+      <thead><tr><th>Severity</th><th>Finding</th><th>Detail</th></tr></thead>
+      <tbody id="findings"></tbody>
+    </table>
+    <h2>Links found (not opened)</h2>
+    <table>
+      <thead><tr><th>URL</th><th>Shown text</th></tr></thead>
+      <tbody id="links"></tbody>
+    </table>
+    <div class="notes" id="notes"></div>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+
+$("go").addEventListener("click", async () => {
+  $("error").style.display = "none";
+  $("result").style.display = "none";
+  const button = $("go");
+  button.disabled = true;
+  try {
+    const form = new FormData();
+    const file = $("file").files[0];
+    if (file) {
+      form.append("file", file);
+    } else if ($("raw").value.trim()) {
+      form.append("raw", $("raw").value);
+    } else {
+      throw new Error("Paste a message or choose a file first.");
+    }
+    const res = await fetch("/api/analyze", { method: "POST", body: form });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.detail || ("Request failed: " + res.status));
+    }
+    render(await res.json());
+  } catch (err) {
+    $("error").textContent = err.message;
+    $("error").style.display = "block";
+  } finally {
+    button.disabled = false;
+  }
+});
+
+function esc(text) {
+  const span = document.createElement("span");
+  span.textContent = text == null ? "" : String(text);
+  return span.innerHTML;
+}
+
+function render(report) {
+  const v = $("verdict");
+  v.textContent = report.verdict.replace(/_/g, " ");
+  v.className = "verdict " + report.verdict;
+  $("meta").innerHTML =
+    "Score " + esc(report.score) + "/100" +
+    (report.subject ? " &middot; Subject: " + esc(report.subject) : "") +
+    (report.from ? " &middot; From: " + esc(report.from) : "");
+
+  $("findings").innerHTML = report.findings.map((f) =>
+    "<tr><td class='sev " + esc(f.severity) + "'>" + esc(f.severity) +
+    "</td><td>" + esc(f.title) +
+    "</td><td>" + esc(f.detail) + "</td></tr>"
+  ).join("") || "<tr><td colspan=3>No findings.</td></tr>";
+
+  $("links").innerHTML = report.links.map((l) =>
+    "<tr><td><code>" + esc(l.url) + "</code></td><td>" +
+    esc(l.anchor_text || "") + "</td></tr>"
+  ).join("") || "<tr><td colspan=2>No links found.</td></tr>";
+
+  $("notes").innerHTML = report.notes.map(esc).join("<br>");
+  $("result").style.display = "block";
+}
+</script>
+</body>
+</html>
