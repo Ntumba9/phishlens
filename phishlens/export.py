@@ -192,3 +192,66 @@ claims, not independently verified facts.</p>
 </body>
 </html>
 """
+
+
+_SEVERITY_ORDER_TEXT = {"high": 0, "medium": 1, "low": 2, "info": 3}
+
+
+def render_handoff(case: dict) -> str:
+    """Plain-text incident handoff for an analyst to copy into a ticket.
+
+    Copy-only by design: nothing here sends anything. Every indicator is
+    defanged, and URLs quoted inside finding details are defanged too, so
+    the pasted text carries no live links.
+    """
+    report = case["report"]
+    lines = [
+        "PhishLens incident handoff",
+        f"Case: {report.get('case_id', '')} (analyzed {report.get('created_at', '')})",
+        f"Subject: {report.get('subject', '')}",
+        f"From: {report.get('from', '')}",
+        "",
+        f"Verdict: {report.get('verdict', '').replace('_', ' ')} "
+        f"(heuristic score {report.get('score', 0)}/100, not a calibrated probability)",
+    ]
+    if case.get("analyst_verdict"):
+        line = f"Analyst verdict: {case['analyst_verdict'].replace('_', ' ')}"
+        if case.get("analyst_reason"):
+            line += f" - {case['analyst_reason']}"
+        lines.append(line)
+    lines.append("")
+
+    findings = sorted(
+        report.get("findings", []),
+        key=lambda f: _SEVERITY_ORDER_TEXT.get(f.get("severity", ""), 4),
+    )
+    lines.append("Findings:")
+    if findings:
+        for f in findings:
+            detail = _URL_IN_TEXT_RE.sub(lambda m: defang(m.group(0)), f["detail"])
+            lines.append(f"- [{f['severity'].upper()}] {f['title']}: {detail}")
+    else:
+        lines.append("- None. That describes this message only; it is not proof of safety.")
+    lines.append("")
+
+    iocs = report.get("iocs", {})
+    lines.append("Indicators (defanged):")
+    any_ioc = False
+    for label, key in (
+        ("Domain", "domains"), ("URL", "urls"),
+        ("IP", "ips"), ("Address", "addresses"),
+    ):
+        for value in iocs.get(key, []):
+            any_ioc = True
+            lines.append(f"- {label}: {defang(value)}")
+    for entry in iocs.get("file_hashes", []):
+        any_ioc = True
+        lines.append(f"- SHA-256: {entry['sha256']} ({entry['filename']})")
+    if not any_ioc:
+        lines.append("- None extracted.")
+    lines.append("")
+    lines.append(
+        "Note: recorded authentication results repeat what the receiving server "
+        "wrote in this message's own headers and can be forged by the sender."
+    )
+    return "\n".join(lines) + "\n"
