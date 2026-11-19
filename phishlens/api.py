@@ -21,7 +21,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .engine import analyze, report_to_dict
-from .export import render_html_report
+from .export import render_handoff, render_html_report
 from .ioc import iocs_as_text
 from .models import IocSet
 from .rules import RULES
@@ -178,8 +178,8 @@ async def analyze_email(
 
 
 @app.get("/api/cases")
-def list_cases(search: str = "", verdict: str = "") -> dict:
-    return {"cases": get_store().list_cases(search=search, verdict=verdict)}
+def list_cases(search: str = "", verdict: str = "", status: str = "") -> dict:
+    return {"cases": get_store().list_cases(search=search, verdict=verdict, status=status)}
 
 
 @app.get("/api/cases/{case_id}")
@@ -199,6 +199,10 @@ class NoteCreate(BaseModel):
     body: str
 
 
+class StatusUpdate(BaseModel):
+    status: str
+
+
 @app.post("/api/cases/{case_id}/verdict")
 def set_verdict(case_id: str, update: VerdictUpdate) -> dict:
     try:
@@ -208,6 +212,30 @@ def set_verdict(case_id: str, update: VerdictUpdate) -> dict:
     if not ok:
         raise HTTPException(status_code=404, detail="Case not found.")
     return {"status": "ok"}
+
+
+@app.post("/api/cases/{case_id}/status")
+def set_status(case_id: str, update: StatusUpdate) -> dict:
+    try:
+        ok = get_store().set_status(case_id, update.status)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if not ok:
+        raise HTTPException(status_code=404, detail="Case not found.")
+    return {"status": "ok"}
+
+
+@app.get("/api/cases/{case_id}/related")
+def related_cases(case_id: str) -> dict:
+    """Cases sharing indicators with this one, for joint review.
+
+    A shared sender domain, URL host or attachment hash groups emails for
+    an analyst; it is not proof of a common sender or campaign.
+    """
+    related = get_store().related_cases(case_id)
+    if related is None:
+        raise HTTPException(status_code=404, detail="Case not found.")
+    return {"related": related}
 
 
 @app.post("/api/cases/{case_id}/notes")
@@ -237,6 +265,15 @@ def export_json(case_id: str) -> JSONResponse:
         case["report"],
         headers={"Content-Disposition": f'attachment; filename="phishlens-{case_id}.json"'},
     )
+
+
+@app.get("/api/cases/{case_id}/handoff.txt", response_class=PlainTextResponse)
+def export_handoff(case_id: str) -> PlainTextResponse:
+    """Copyable plain-text incident handoff. Nothing is sent anywhere."""
+    case = get_store().get_case(case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Case not found.")
+    return PlainTextResponse(render_handoff(case))
 
 
 @app.get("/api/cases/{case_id}/iocs.txt", response_class=PlainTextResponse)
