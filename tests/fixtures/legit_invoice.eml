@@ -1,0 +1,26 @@
+Return-Path: <billing@steampro.co.za>
+From: "SteamPro Billing" <billing@steampro.co.za>
+Subject: Invoice #1042 for November
+Date: Fri, 13 Nov 2026 10:00:00 +0200
+Authentication-Results: mx.example.com; spf=pass; dkim=pass; dmarc=pass
+Received: from mail.steampro.co.za by mx.example.com with ESMTP id inv1; Fri, 13 Nov 2026 10:00:02 +0200
+Received: from localhost by mail.steampro.co.za with ESMTP id inv0; Fri, 13 Nov 2026 10:00:01 +0200
+Content-Type: multipart/mixed; boundary="INV42"
+
+--INV42
+Content-Type: text/plain; charset="utf-8"
+
+Hi Ntumba,
+
+Your November invoice is attached. Payment terms are 30 days as usual.
+
+Regards,
+SteamPro Billing
+
+--INV42
+Content-Type: application/pdf
+Content-Disposition: attachment; filename="invoice-1042.pdf"
+Content-Transfer-Encoding: base64
+
+JVBERi0xLjQKJXN5bnRoZXRpYyBmaXh0dXJlCjEgMCBvYmoKPDwgL1R5cGUgL0NhdGFsb2cgPj4K
+--INV42--
