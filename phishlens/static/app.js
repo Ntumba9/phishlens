@@ -93,7 +93,8 @@ function setChosenFiles(fileList) {
 async function refreshQueue(selectId) {
   const search = encodeURIComponent($("queue-search").value.trim());
   const verdict = encodeURIComponent($("queue-filter").value);
-  const data = await api(`/api/cases?search=${search}&verdict=${verdict}`);
+  const status = encodeURIComponent($("queue-status-filter").value);
+  const data = await api(`/api/cases?search=${search}&verdict=${verdict}&status=${status}`);
   state.cases = data.cases;
   renderQueue();
   if (selectId) await openCase(selectId);
@@ -118,7 +119,12 @@ function renderQueue() {
 
     const meta = el("div", "q-meta");
     meta.appendChild(el("span", "q-sender", c.sender || "unknown sender"));
-    meta.appendChild(el("span", null, `${c.score}/100`));
+    const right = el("span", "q-right");
+    right.appendChild(el("span", `status-chip ${c.status || "new"}`, statusLabel(c.status)));
+    right.appendChild(
+      el("span", "q-age", `${c.score}/100 · ${relativeTime(c.created_at)}`)
+    );
+    meta.appendChild(right);
     item.appendChild(meta);
 
     if (c.analyst_verdict) {
@@ -158,6 +164,12 @@ function closeCase() {
   history.replaceState(null, "", location.pathname);
   renderQueue();
   $("new-analysis-btn").focus();
+}
+
+const STATUS_LABELS = { new: "New", in_review: "In review", closed: "Closed" };
+
+function statusLabel(status) {
+  return STATUS_LABELS[status] || "New";
 }
 
 function verdictLabel(verdict) {
@@ -234,6 +246,8 @@ function renderCase() {
   renderRoute(report.route || []);
   renderNotes(c.notes || []);
   renderIocs(report.iocs || {});
+  $("case-status").value = c.status || "new";
+  renderRelated(c.id).catch((err) => toast(err.message));
 
   $("safety-notes").textContent = (report.notes || []).join(" ");
 
@@ -406,6 +420,43 @@ function renderNotes(notes) {
   }
 }
 
+/* ---------- related cases ---------- */
+
+async function renderRelated(caseId) {
+  const list = $("related-list");
+  list.textContent = "";
+  const data = await api(`/api/cases/${caseId}/related`);
+  if (!data.related.length) {
+    list.appendChild(
+      el("p", "hint", "No other cases share indicators with this one.")
+    );
+    return;
+  }
+  for (const r of data.related) {
+    const item = el("button", "related-item");
+    const top = el("div", "q-top");
+    top.appendChild(el("span", `verdict-dot ${r.verdict}`));
+    top.appendChild(el("span", "q-subject", r.subject || "(no subject)"));
+    item.appendChild(top);
+
+    const meta = el("div", "q-meta");
+    meta.appendChild(el("span", "q-sender", r.sender || "unknown sender"));
+    meta.appendChild(
+      el("span", null, `${r.score}/100 · ${relativeTime(r.created_at)}`)
+    );
+    item.appendChild(meta);
+
+    const shared = el("div", "related-shared");
+    for (const s of r.shared) shared.appendChild(el("span", "shared-chip", s));
+    item.appendChild(shared);
+
+    item.addEventListener("click", () =>
+      openCase(r.id).catch((err) => toast(err.message))
+    );
+    list.appendChild(item);
+  }
+}
+
 /* ---------- indicators ---------- */
 
 function renderIocs(iocs) {
@@ -549,6 +600,36 @@ $("drop-zone").addEventListener("drop", (event) => {
 
 $("queue-search").addEventListener("input", () => refreshQueue().catch((err) => toast(err.message)));
 $("queue-filter").addEventListener("change", () => refreshQueue().catch((err) => toast(err.message)));
+$("queue-status-filter").addEventListener("change", () => refreshQueue().catch((err) => toast(err.message)));
+
+$("case-status").addEventListener("change", async () => {
+  if (!state.current) return;
+  const status = $("case-status").value;
+  try {
+    await api(`/api/cases/${state.current.id}/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    await openCase(state.current.id);
+    toast(`Status set to ${statusLabel(status)}`);
+  } catch (err) {
+    toast(err.message);
+  }
+});
+
+$("copy-handoff").addEventListener("click", async () => {
+  if (!state.current) return;
+  try {
+    const resp = await fetch(`/api/cases/${state.current.id}/handoff.txt`);
+    if (!resp.ok) throw new Error("Handoff unavailable");
+    const text = await resp.text();
+    await navigator.clipboard.writeText(text);
+    toast("Handoff copied - nothing was sent");
+  } catch (err) {
+    toast("Copy failed - the Report and Evidence exports still work");
+  }
+});
 $("defang-toggle").addEventListener("change", () => {
   if (state.current) renderIocs(state.current.report.iocs || {});
 });
