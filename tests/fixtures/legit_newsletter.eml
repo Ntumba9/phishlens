@@ -1,0 +1,15 @@
+Return-Path: <bounces@mail.github.com>
+From: "GitHub" <noreply@github.com>
+Subject: Your weekly digest
+Date: Wed, 18 Nov 2026 09:12:00 +0200
+Message-ID: <digest-991@github.com>
+Authentication-Results: mx.example.com; spf=pass smtp.mailfrom=github.com; dkim=pass; dmarc=pass
+Received: from out-21.smtp.github.com (out-21.smtp.github.com [192.30.252.204]) by mx.example.com with ESMTPS id zzz999
+Content-Type: text/plain; charset="utf-8"
+
+Here is what happened in your repositories this week.
+
+Read more: https://github.com/Ntumba9/aegis
+
+You are receiving this because you watch these repositories.
+Unsubscribe: https://github.com/settings/notifications
