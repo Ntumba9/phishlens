@@ -689,4 +689,4 @@ code { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0; word-brea
   .empty-state { margin-top: 10vh; padding: 0 10px; }
   .analyst-row input { min-width: 140px; }
   .sheet { padding: 22px 18px; }
-             }
+}
